@@ -723,7 +723,7 @@ static int copy_path(const char *truepath,const char *translroot) {
 #endif
 
 	rcod=true_lstat(truepath,&trueinfo);
-	if(rcod<0 && errno!=ENOENT) return -1;
+	if(rcod<0 && errno!=ENOENT && errno!=EACCES) return -1;
 	if(!rcod) {
 		if((truesz=strlen(truepath)+strlen(translpath))>PATH_MAX) {
 			errno=ENAMETOOLONG;
@@ -857,7 +857,7 @@ static int unlink_recursive(const char *truepath) {
 #endif
 
 	rcod=true_lstat(truepath,&trueinfo);
-	if(rcod<0 && errno!=ENOENT) return -1;
+	if(rcod<0 && errno!=ENOENT && errno!=EACCES) return -1;
 	if(rcod!=0) return 0;
 
 	if(S_ISDIR(trueinfo.st_mode)) {
