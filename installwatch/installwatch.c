@@ -147,6 +147,7 @@ static int (*true_truncate64)(const char *, __off64_t);
 
 #if (GLIBC_MINOR >= 4)
 static int (*true_openat)(int, const char *, int, ...);
+static int (*true_fchdir)(int);
 static int (*true_fchmodat)(int, const char *, mode_t, int);
 static int (*true_fchownat)(int, const char *, uid_t, gid_t, int);
 static int (*true_fxstatat)(int, int, const char *, struct stat *, int);
@@ -408,6 +409,7 @@ static void initialize(void) {
 #if (GLIBC_MINOR >= 4)
 
 	true_openat      = dlsym(libc_handle, "openat");
+	true_fchdir      = dlsym(libc_handle, "fchdir");
 	true_fchmodat      = dlsym(libc_handle, "fchmodat");
 	true_fchownat      = dlsym(libc_handle, "fchownat");
 	true_fxstatat      = dlsym(libc_handle, "__fxstatat");
@@ -3923,6 +3925,42 @@ int openat (int dirfd, const char *path, int flags, ...) {
  	
  	instw_delete(&instw);
  
+	return result;
+}
+
+int fchdir (int fd) {
+	int result;
+	instw_t instw;
+	int status;
+
+	if (!libc_handle)
+		initialize();
+
+#if DEBUG
+	debug(2,"fchdir(%i)\n",fd);
+#endif
+
+	  /* We were asked to work in "real" mode */
+	if( !(__instw.gstatus & INSTW_INITIALIZED) ||
+	    !(__instw.gstatus & INSTW_OKWRAP) ) {
+		result=true_fchdir(fd);
+		return result;
+	}    
+
+	instw_new(&instw);
+	instw_setpathrel(&instw,fd,"./");
+	instw_getstatus(&instw,&status);
+
+	if(status&INSTW_TRANSLATED && !(status&INSTW_ISINROOT)) {
+		result=true_fchdir(instw.translpath);
+		debug(3,"\teffective chdir(%s)\n",instw.translpath);
+	} else {
+		result=true_fchdir(fd);
+		debug(3,"\teffective chdir(%s)\n",fd);
+	}
+
+	instw_delete(&instw);
+
 	return result;
 }
 
